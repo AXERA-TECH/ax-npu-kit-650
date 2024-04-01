@@ -14,7 +14,7 @@ cmake ..  \
   -DCMAKE_TOOLCHAIN_FILE=../toolchains/aarch64-none-linux-gnu.toolchain.cmake \
   -DCMAKE_INSTALL_PREFIX=./install \
   -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTS=ON  \
+  -DBUILD_DEMO=ON  \
   -DCHIP_AX650=ON
 make -j4
 make install

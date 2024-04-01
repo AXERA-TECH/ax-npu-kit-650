@@ -42,17 +42,17 @@ set_target_properties(ax_skel
         PUBLIC_HEADER
         "inc/ax_skel_api.h;inc/ax_skel_type.h;inc/ax_skel_err.h")
 
-if (BUILD_TESTS)
+if (BUILD_DEMO)
     find_package(OpenCV REQUIRED)
     include_directories(${OpenCV_INCLUDE_DIRS})
 
-    add_executable(ax_skel_version tests/ax_skel_version.cpp)
+    add_executable(ax_skel_version demo/ax_skel_version.cpp)
     target_link_libraries(ax_skel_version ax_skel ${MSP_LIBS})
 
-    add_executable(ax_skel_getcap tests/ax_skel_getcap.cpp)
+    add_executable(ax_skel_getcap demo/ax_skel_getcap.cpp)
     target_link_libraries(ax_skel_getcap ax_skel ${MSP_LIBS})
 
-    add_executable(hvcfp_demo tests/hvcfp_demo.cpp)
+    add_executable(hvcfp_demo demo/hvcfp_demo.cpp)
     target_link_libraries(hvcfp_demo ax_skel ${MSP_LIBS} ${OpenCV_LIBS})
 
     list(APPEND TEST_PROGRAMS

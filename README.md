@@ -16,6 +16,7 @@
 
 - [快速编译](docs/compile.md)  基于 cmake 实现简单的跨平台编译。
 - [API说明](docs/api.md)
+- [调用流程](docs/flowchart.md)
 
 ### 示例
 

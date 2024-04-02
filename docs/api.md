@@ -29,7 +29,7 @@ AX_S32 AX_SKEL_Init(const AX_SKEL_INIT_PARAM_T *pstParam)
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_DeInit
@@ -46,7 +46,7 @@ AX_S32 AX_SKEL_DeInit(AX_VOID)
 ### 【注意】
 与AX_SKEL_Init成对使用。
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_GetCapability
@@ -65,7 +65,7 @@ AX_S32 AX_SKEL_GetCapability(const AX_SKEL_CAPABILITY_T **ppstCapability)
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[ax_skel_getcap.cpp](../tests/ax_skel_getcap.cpp)
+[ax_skel_getcap.cpp](../demo/ax_skel_getcap.cpp)
 
 
 ## AX_SKEL_GetVersion
@@ -84,7 +84,7 @@ AX_S32 AX_SKEL_GetVersion(const AX_SKEL_VERSION_INFO_T **ppstVersion)
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[ax_skel_version.cpp](../tests/ax_skel_version.cpp)
+[ax_skel_version.cpp](../demo/ax_skel_version.cpp)
 
 
 ## AX_SKEL_Create
@@ -104,7 +104,7 @@ AX_S32 AX_SKEL_Create(const AX_SKEL_HANDLE_PARAM_T *pstParam, AX_SKEL_HANDLE *pH
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_Destroy
@@ -123,7 +123,7 @@ AX_S32 AX_SKEL_Destroy(AX_SKEL_HANDLE handle)
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_GetConfig
@@ -143,7 +143,7 @@ AX_S32 AX_SKEL_GetConfig(AX_SKEL_HANDLE handle, const AX_SKEL_CONFIG_T **ppstCon
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_SetConfig
@@ -163,7 +163,7 @@ AX_S32 AX_SKEL_SetConfig(AX_SKEL_HANDLE handle, const AX_SKEL_CONFIG_T *pstConfi
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_RegisterResultCallback
@@ -185,7 +185,7 @@ AX_S32 AX_SKEL_RegisterResultCallback(AX_SKEL_HANDLE handle, AX_SKEL_RESULT_CALL
 ### 【注意】
 如果算法结果通过回调获取，则不应再使用AX_SKEL_GetResult
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_SendFrame
@@ -206,7 +206,7 @@ AX_S32 AX_SKEL_SendFrame(AX_SKEL_HANDLE handle, const AX_SKEL_FRAME_T *pstFrame,
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_GetResult
@@ -227,7 +227,7 @@ AX_S32 AX_SKEL_GetResult(AX_SKEL_HANDLE handle, AX_SKEL_RESULT_T **ppstResult, A
 | 0   | 成功                                         |
 ### 【注意】
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)
 
 
 ## AX_SKEL_Release
@@ -247,4 +247,4 @@ AX_S32 AX_SKEL_Release(AX_VOID *p)
 ### 【注意】
 如果使用回调方式获取算法结果，则不需要通过此接口释放
 ### 【示例】
-[hvcfp_demo.cpp](../tests/hvcfp_demo.cpp)
+[hvcfp_demo.cpp](../demo/hvcfp_demo.cpp)

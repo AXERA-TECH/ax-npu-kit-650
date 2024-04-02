@@ -17,13 +17,13 @@
 - [快速编译](docs/compile.md)  基于 cmake 实现简单的跨平台编译。
 - [API说明](docs/api.md)
 - [调用流程](docs/flowchart.md)
-- [如何拓展pipeline](docs/pipeline.md)
+- [如何拓展 pipeline](docs/pipeline.md)
 
 ### 示例
 
 | 示例                                | 简介                               |
 |-----------------------------------|----------------------------------|
-| [hvcfp_demo](demo/hvcfp_demo.cpp) | 人车非结构化算法，读取jpg图片，保存结果到result.jpg |
+| [hvcfp_demo](demo/hvcfp_demo.cpp) | 人车非结构化算法，读取 jpg 图片，保存结果到 result.jpg |
 
 ## 免责申明
 **本项目只面向社区开发者作为技术交流使用，对商业交付项目不做任何质量保证**。

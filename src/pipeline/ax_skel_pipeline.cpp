@@ -27,11 +27,12 @@ AX_S32 skel::ppl::PipelineBase::SendFrame(const AX_SKEL_FRAME_T *pstFrame, AX_S3
     pstNewFrame->nFrameId = pstFrame->nFrameId;
     pstNewFrame->nStreamId = pstFrame->nStreamId;
     pstNewFrame->pUserData = pstFrame->pUserData;
-    ret = skel::utils::CopyFrame(pstFrame->stFrame, pstNewFrame->stFrame, "copy_frame");
-    if (AX_SKEL_SUCC != ret) {
-        ALOGE("SendFrame failed! ret= 0x%x\n", ret);
-        return ret;
-    }
+    memcpy(&pstNewFrame->stFrame, &pstFrame->stFrame, sizeof(AX_VIDEO_FRAME_T));
+//    ret = skel::utils::CopyFrame(pstFrame->stFrame, pstNewFrame->stFrame, "copy_frame");
+//    if (AX_SKEL_SUCC != ret) {
+//        ALOGE("SendFrame failed! ret= 0x%x\n", ret);
+//        return ret;
+//    }
 
     ret = m_input_queue.Push(pstNewFrame, nTimeout);
     if (AX_SKEL_SUCC != ret) {

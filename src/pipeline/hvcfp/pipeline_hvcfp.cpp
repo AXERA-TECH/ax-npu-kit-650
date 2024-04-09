@@ -45,6 +45,10 @@ AX_S32 skel::ppl::PipelineHVCFP::Init(const AX_SKEL_HANDLE_PARAM_T *pstParam) {
 }
 
 AX_S32 skel::ppl::PipelineHVCFP::DeInit() {
+    m_input_queue.Close();
+    m_detect_result_queue.Close();
+    m_track_result_queue.Close();
+
     m_detector.Release();
     FreeConfig(m_pstApiConfig);
 
@@ -329,6 +333,8 @@ AX_S32 skel::ppl::PipelineHVCFP::DealWithParams(const AX_SKEL_HANDLE_PARAM_T *ps
         ALOGW("origin size not set in param, will use frame size in SendFrame");
 
     if (m_stHandleParam.nFrameDepth > 0) {
+//        m_stHandleParam.nFrameDepth = m_stHandleParam.nFrameDepth * 4;
+        ALOGD("Set capacity: %d\n", m_stHandleParam.nFrameDepth);
         m_input_queue.SetCapacity(m_stHandleParam.nFrameDepth);
         m_detect_result_queue.SetCapacity(m_stHandleParam.nFrameDepth);
         m_track_result_queue.SetCapacity(m_stHandleParam.nFrameDepth);

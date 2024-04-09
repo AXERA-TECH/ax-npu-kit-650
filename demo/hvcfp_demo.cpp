@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    FreeFrame(frame.stFrame);
+//    FreeFrame(frame.stFrame);
 
     if (!bUseCallback) {
         ret = AX_SKEL_GetResult(handle, &pstResult, -1);

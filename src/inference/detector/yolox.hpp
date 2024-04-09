@@ -74,23 +74,35 @@ namespace skel {
                     CreateAnchors();
                 }
 
-                AX_VIDEO_FRAME_T dst;
-                ret = Preprocess(img, dst);
-                if (ret != 0)
-                {
-                    utils::FreeFrame(dst);
-                    return ret;
-                }
+//                ALOGD("net size: %d %d, image size: %d %d\n", m_input_size[1], m_input_size[0],
+//                      img.u32Width, img.u32Height);
+                if (m_input_size[0] != img.u32Height || m_input_size[1] != img.u32Width) {
+
+                    AX_VIDEO_FRAME_T dst;
+                    ret = Preprocess(img, dst);
+                    if (ret != 0)
+                    {
+                        utils::FreeFrame(dst);
+                        return ret;
+                    }
 
 //                printf("dst.size: width: %d  height: %d\n", dst.u32Width, dst.u32Height);
 
-                ret = Run(dst);
-                if (ret != 0)
-                {
+                    ret = Run(dst);
+                    if (ret != 0)
+                    {
+                        utils::FreeFrame(dst);
+                        return ret;
+                    }
                     utils::FreeFrame(dst);
-                    return ret;
                 }
-                utils::FreeFrame(dst);
+                else {
+                    ret = Run(img);
+                    if (ret != 0)
+                    {
+                        return ret;
+                    }
+                }
 
                 // generate proposals
                 std::vector<skel::detection::Object> proposals;

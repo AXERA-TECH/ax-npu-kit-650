@@ -273,17 +273,6 @@ namespace skel
             m_input_num = m_io_info->nInputSize;
             m_output_num = m_io_info->nOutputSize;
 
-//            ALOGD("input num: %d\n", m_input_num);
-//            ALOGD("output num: %d\n", m_output_num);
-//
-//             for (int i = 0; i < m_output_num; i++)
-//             {
-//                 if (m_io_info->pOutputs[i].eLayout == AX_ENGINE_TENSOR_LAYOUT_NHWC)
-//                     ALOGD("output[%d]: name: %s  layout: NHWC  data type: %d\n", i, m_io_info->pOutputs[i].pName, m_io_info->pOutputs[i].eDataType);
-//                 else
-//                     ALOGD("output[%d]: name: %s  layout: NCHW  data type: %d\n", i, m_io_info->pOutputs[i].pName, m_io_info->pOutputs[i].eDataType);
-//             }
-
             // 4.1 query io
             AX_IMG_FORMAT_E eDtype;
             ret = utils::query_model_input_size(m_io_info, m_input_size, eDtype);//FIXME.
@@ -338,7 +327,7 @@ namespace skel
             // 7.1 fill input & prepare to inference
             auto ret = utils::push_io_input(&stFrame, m_io);
             if (0 != ret) {
-                printf("push_io_input failed.\n");
+                ALOGE("push_io_input failed. ret=0x%x\n", ret);
                 ret = AX_ERR_SKEL_ILLEGAL_PARAM;
                 return ret;
             }
@@ -347,7 +336,7 @@ namespace skel
             {
                 ret = AX_ENGINE_RunSync(m_handle, &m_io);
                 if (0 != ret) {
-                    printf("AX_ENGINE_RunSync failed.\n");
+                    ALOGE("AX_ENGINE_RunSync failed. ret=0x%x\n", ret);
                     ret = AX_ERR_SKEL_INVALID_HANDLE;
                     return ret;
                 }

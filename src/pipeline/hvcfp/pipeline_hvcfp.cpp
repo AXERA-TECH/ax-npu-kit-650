@@ -13,6 +13,7 @@
 #include "utils/config_util.h"
 
 #include "mgr/model_mgr.h"
+#include "mgr/mem_mgr.h"
 
 #include "ax_skel_api.h"
 
@@ -28,6 +29,7 @@ AX_S32 skel::ppl::PipelineHVCFP::Init(const AX_SKEL_HANDLE_PARAM_T *pstParam) {
     CHECK_PTR(pstParam);
 
     DealWithParams(pstParam);
+    SetConfig(&pstParam->stConfig);
 
     AX_S32 ret = InitDetector();
     if (AX_SKEL_SUCC != ret) {
@@ -45,10 +47,6 @@ AX_S32 skel::ppl::PipelineHVCFP::Init(const AX_SKEL_HANDLE_PARAM_T *pstParam) {
 }
 
 AX_S32 skel::ppl::PipelineHVCFP::DeInit() {
-    m_input_queue.Close();
-    m_detect_result_queue.Close();
-    m_track_result_queue.Close();
-
     m_detector.Release();
     FreeConfig(m_pstApiConfig);
 
@@ -220,7 +218,7 @@ AX_S32 skel::ppl::PipelineHVCFP::GetDetectResult(AX_SKEL_RESULT_T **ppstResult, 
         }
     }
 
-    utils::FreeFrame(*pstFrame);
+    free(pstFrame);
 
     return AX_SKEL_SUCC;
 }
@@ -287,19 +285,18 @@ AX_S32 skel::ppl::PipelineHVCFP::GetTrackResult(AX_SKEL_RESULT_T **ppstResult, A
 
             vecResult.push_back(stObjectItem);
         }
-
-        if (!m_config.push_disable)
-            m_tracker_dealer->Finalize(pstFrame, dst, vecResult);
-
-        if (!vecResult.empty()) {
-            dst->nObjectSize = (int)vecResult.size();
-            dst->pstObjectItems = (AX_SKEL_OBJECT_ITEM_T*)malloc(dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
-            memset(dst->pstObjectItems, 0, dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
-            memcpy(dst->pstObjectItems, vecResult.data(), dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
-        }
     }
 
-    utils::FreeFrame(*pstFrame);
+    if (!vecResult.empty()) {
+        dst->nObjectSize = (int)vecResult.size();
+        dst->pstObjectItems = (AX_SKEL_OBJECT_ITEM_T*)malloc(dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
+        memcpy(dst->pstObjectItems, vecResult.data(), dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
+    }
+
+    if (!m_config.push_disable)
+        m_tracker_dealer->Finalize(pstFrame, dst, vecResult);
+
+    free(pstFrame);
 
     return AX_SKEL_SUCC;
 }
@@ -315,7 +312,13 @@ AX_S32 skel::ppl::PipelineHVCFP::ResultCallbackThread() {
 
     m_callback((AX_SKEL_HANDLE)this, result, m_userData);
 
-    AX_SKEL_Release((void*)result);
+    if (result->nObjectSize > 0) {
+        free(result->pstObjectItems);
+    }
+    if (result->nCacheListSize > 0) {
+        free(result->pstCacheList);
+    }
+    free(result);
 
     return AX_SKEL_SUCC;
 }

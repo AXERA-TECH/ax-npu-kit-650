@@ -37,7 +37,7 @@ AX_S32 skel::ppl::PipelineBase::SendFrame(const AX_SKEL_FRAME_T *pstFrame, AX_S3
     ret = m_input_queue.Push(pstNewFrame, nTimeout);
     if (AX_SKEL_SUCC != ret) {
         ALOGE("Push frame failed! ret= 0x%x\n", ret);
-        skel::utils::FreeFrame(*pstNewFrame);
+        free(pstNewFrame);
         return ret;
     }
 

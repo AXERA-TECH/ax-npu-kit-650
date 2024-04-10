@@ -270,6 +270,11 @@ SKEL_API AX_S32 AX_SKEL_Release(AX_VOID *p) {
         if (mem_type == AX_SKEL_MEM_RESULT) {
             auto* result = (AX_SKEL_RESULT_T*)p;
             if (result->nObjectSize > 0) {
+                for (int i = 0; i < result->nObjectSize; i++) {
+                    if (result->pstObjectItems[i].pstPointSet) {
+                        free(result->pstObjectItems[i].pstPointSet);
+                    }
+                }
                 free(result->pstObjectItems);
             }
             if (result->nCacheListSize > 0) {

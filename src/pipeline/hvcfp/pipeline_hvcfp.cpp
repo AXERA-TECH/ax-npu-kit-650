@@ -47,7 +47,13 @@ AX_S32 skel::ppl::PipelineHVCFP::Init(const AX_SKEL_HANDLE_PARAM_T *pstParam) {
 }
 
 AX_S32 skel::ppl::PipelineHVCFP::DeInit() {
+    m_input_queue.Close();
+    m_detect_result_queue.Close();
+    m_track_result_queue.Close();
+
     m_detector.Release();
+    if (m_tracker_dealer)
+        delete m_tracker_dealer;
     FreeConfig(m_pstApiConfig);
 
     return AX_SKEL_SUCC;
@@ -137,6 +143,10 @@ AX_S32 skel::ppl::PipelineHVCFP::Run() {
 
     ret = m_input_queue.Pop(frame);
     if (AX_SKEL_SUCC != ret) {
+        if (AX_ERR_SKEL_UNEXIST == ret) {
+            ALOGW("pipeline will be closed.\n");
+            return ret;
+        }
         ALOGE("pop failed! ret=0x%x\n", ret);
         return ret;
     }
@@ -160,6 +170,7 @@ AX_S32 skel::ppl::PipelineHVCFP::Run() {
     }
     else {
         if (!m_tracker_dealer && !m_config.push_disable) {
+            ALOGD("Init tracker dealer\n");
             m_tracker_dealer = new TrackerDealer(m_result_constrain);
         }
 
@@ -185,6 +196,10 @@ AX_S32 skel::ppl::PipelineHVCFP::GetDetectResult(AX_SKEL_RESULT_T **ppstResult, 
     DetQueueType queue_item;
     ret = m_detect_result_queue.Pop(queue_item, nTimeout);
     if (AX_SKEL_SUCC != ret) {
+        if (AX_ERR_SKEL_UNEXIST == ret) {
+            ALOGW("pipeline will be closed.\n");
+            return ret;
+        }
         ALOGE("pop failed! ret=0x%x\n", ret);
         return ret;
     }
@@ -229,6 +244,10 @@ AX_S32 skel::ppl::PipelineHVCFP::GetTrackResult(AX_SKEL_RESULT_T **ppstResult, A
     TrackQueueType queue_item;
     ret = m_track_result_queue.Pop(queue_item, nTimeout);
     if (AX_SKEL_SUCC != ret) {
+        if (AX_ERR_SKEL_UNEXIST == ret) {
+            ALOGW("pipeline will be closed.\n");
+            return ret;
+        }
         ALOGE("pop failed! ret=0x%x\n", ret);
         return ret;
     }
@@ -293,8 +312,9 @@ AX_S32 skel::ppl::PipelineHVCFP::GetTrackResult(AX_SKEL_RESULT_T **ppstResult, A
         memcpy(dst->pstObjectItems, vecResult.data(), dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
     }
 
-    if (!m_config.push_disable)
+    if (!m_config.push_disable) {
         m_tracker_dealer->Finalize(pstFrame, dst, vecResult);
+    }
 
     free(pstFrame);
 
@@ -306,6 +326,10 @@ AX_S32 skel::ppl::PipelineHVCFP::ResultCallbackThread() {
     AX_SKEL_RESULT_T *result = nullptr;
     ret = GetResult(&result, -1);
     if (AX_SKEL_SUCC != ret) {
+        if (AX_ERR_SKEL_UNEXIST == ret) {
+            ALOGW("pipeline will be closed.\n");
+            return ret;
+        }
         ALOGE("GetResult failed! ret=0x%x\n", ret);
         return ret;
     }
@@ -313,10 +337,15 @@ AX_S32 skel::ppl::PipelineHVCFP::ResultCallbackThread() {
     m_callback((AX_SKEL_HANDLE)this, result, m_userData);
 
     if (result->nObjectSize > 0) {
+        for (int i = 0; i < result->nObjectSize; i++) {
+            if (result->pstObjectItems[i].pstPointSet) {
+                delete[] result->pstObjectItems[i].pstPointSet;
+            }
+        }
         free(result->pstObjectItems);
     }
     if (result->nCacheListSize > 0) {
-        free(result->pstCacheList);
+        delete[] result->pstCacheList;
     }
     free(result);
 

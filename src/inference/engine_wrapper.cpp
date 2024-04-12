@@ -305,6 +305,7 @@ namespace skel
             ret = utils::prepare_io(strModelPath, m_io_info, m_io, utils::SKEL_IO_BUFFER_STRATEGY_CACHED);
             if (0 != ret) {
                 ALOGE("prepare io failed!\n");
+                utils::free_io(m_io);
                 return deinit_handle();
             }
 
@@ -348,6 +349,7 @@ namespace skel
         int EngineWrapper::Release()
         {
             if (m_handle) {
+                utils::free_io(m_io);
                 AX_ENGINE_DestroyHandle(m_handle);
             }
             return AX_SKEL_SUCC;

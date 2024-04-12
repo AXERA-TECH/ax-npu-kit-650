@@ -209,25 +209,21 @@ namespace skel {
             return ret;
         }
 
-        static void IncFrameRefCnt(AX_SKEL_FRAME_T& frame)
+        static inline void IncFrameRefCnt(AX_SKEL_FRAME_T& frame)
         {
-//        frame.nRefCnt++;
+            utils::inc_io_ref_cnt(frame.stFrame);
         }
 
-        static void DecFrameRefCnt(AX_SKEL_FRAME_T& frame)
+        static inline void DecFrameRefCnt(AX_SKEL_FRAME_T& frame)
         {
-//        frame.nRefCnt--;
-//        if (frame.nRefCnt == 0 && frame.stFrame.u64PhyAddr[0] != 0)
-//        {
-//            FreeFrame(frame.stFrame);
-//        }
+            utils::dec_io_ref_cnt(frame.stFrame);
         }
 
-        static void FreeFrame(AX_SKEL_FRAME_T& frame)
+        static void FreeFrame(AX_SKEL_FRAME_T* frame)
         {
-            if (frame.stFrame.u64PhyAddr[0] != 0)
-            {
-                FreeFrame(frame.stFrame);
+            if (frame) {
+                DecFrameRefCnt(*frame);
+                free(frame);
             }
         }
     }

@@ -180,10 +180,23 @@ AX_S32 skel::ppl::PipelineHVCFP::Run() {
 
         FilterTrackResult(track_queue_item.trackResult);
 
-        ret = m_track_result_queue.Push(track_queue_item);
-        if (AX_SKEL_SUCC != ret) {
-            ALOGE("push failed! ret=0x%x\n", ret);
-            return ret;
+        if (m_callback) {
+            AX_SKEL_RESULT_T *pstResult = nullptr;
+            ConvertTrackResult(track_queue_item.pstFrame, track_queue_item.trackResult, &pstResult);
+            m_callback((AX_SKEL_HANDLE)this, pstResult, m_userData);
+            FreeResult(pstResult);
+            utils::FreeFrame(frame);
+        }
+        else {
+            if (m_track_result_queue.IsFull()) {
+                TrackQueueType pop_item;
+                m_track_result_queue.Pop(pop_item, 0);
+            }
+            ret = m_track_result_queue.Push(track_queue_item);
+            if (AX_SKEL_SUCC != ret) {
+                ALOGE("push failed! ret=0x%x\n", ret);
+                return ret;
+            }
         }
     }
 
@@ -233,7 +246,7 @@ AX_S32 skel::ppl::PipelineHVCFP::GetDetectResult(AX_SKEL_RESULT_T **ppstResult, 
         }
     }
 
-    free(pstFrame);
+    utils::FreeFrame(pstFrame);
 
     return AX_SKEL_SUCC;
 }
@@ -252,71 +265,9 @@ AX_S32 skel::ppl::PipelineHVCFP::GetTrackResult(AX_SKEL_RESULT_T **ppstResult, A
         return ret;
     }
 
-    *ppstResult = (AX_SKEL_RESULT_T*)malloc(sizeof(AX_SKEL_RESULT_T));
-    AX_SKEL_RESULT_T* dst = *ppstResult;
-    memset(dst, 0, sizeof(AX_SKEL_RESULT_T));
+    ConvertTrackResult(queue_item.pstFrame, queue_item.trackResult, ppstResult);
 
-    auto *pstFrame = queue_item.pstFrame;
-    auto& track_result = queue_item.trackResult;
-    dst->nOriginalHeight = m_originSize[0];
-    dst->nOriginalWidth = m_originSize[1];
-    dst->nFrameId = pstFrame->nFrameId;
-    dst->nStreamId = pstFrame->nStreamId;
-    dst->pUserData = pstFrame->pUserData;
-
-    vector<AX_SKEL_OBJECT_ITEM_T> vecResult;
-    for (auto it = track_result.begin(); it != track_result.end(); it++) {
-        const auto& output_tracks = it->second;
-        for (AX_U32 i = 0; i < output_tracks.size(); ++ i) {
-            const auto& obj = output_tracks[i];
-            AX_U32 nClassId = obj.class_id;
-            const AX_CHAR *pstrObjectCategory = HVCFP_CLASS_NAMES[nClassId].c_str();
-            AX_SKEL_OBJECT_ITEM_T stObjectItem;
-            memset(&stObjectItem, 0x00, sizeof(stObjectItem));
-
-            if (obj.state == TrackState::New) {
-                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_NEW;
-            }
-            else if (obj.state == TrackState::Tracked) {
-                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_UPDATE;
-            }
-            else if (obj.state == TrackState::Removed) {
-                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_DIE;
-            }
-            else {
-                continue;
-            }
-
-            stObjectItem.pstrObjectCategory = (const AX_CHAR *)pstrObjectCategory;
-            stObjectItem.stRect.fX = (float)obj._tlwh[0];
-            stObjectItem.stRect.fY = (float)obj._tlwh[1];
-            stObjectItem.stRect.fW = (float)obj._tlwh[2];
-            stObjectItem.stRect.fH = (float)obj._tlwh[3];
-            stObjectItem.fConfidence = (float)obj.score;
-            stObjectItem.nFrameId = obj.real_frame_id;
-
-            // track
-            stObjectItem.nTrackId = obj.track_id;
-
-            if (!m_config.push_disable) {
-                m_tracker_dealer->Update(pstFrame, stObjectItem);
-            }
-
-            vecResult.push_back(stObjectItem);
-        }
-    }
-
-    if (!vecResult.empty()) {
-        dst->nObjectSize = (int)vecResult.size();
-        dst->pstObjectItems = (AX_SKEL_OBJECT_ITEM_T*)malloc(dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
-        memcpy(dst->pstObjectItems, vecResult.data(), dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
-    }
-
-    if (!m_config.push_disable) {
-        m_tracker_dealer->Finalize(pstFrame, dst, vecResult);
-    }
-
-    free(pstFrame);
+    utils::FreeFrame(queue_item.pstFrame);
 
     return AX_SKEL_SUCC;
 }
@@ -336,18 +287,7 @@ AX_S32 skel::ppl::PipelineHVCFP::ResultCallbackThread() {
 
     m_callback((AX_SKEL_HANDLE)this, result, m_userData);
 
-    if (result->nObjectSize > 0) {
-        for (int i = 0; i < result->nObjectSize; i++) {
-            if (result->pstObjectItems[i].pstPointSet) {
-                delete[] result->pstObjectItems[i].pstPointSet;
-            }
-        }
-        free(result->pstObjectItems);
-    }
-    if (result->nCacheListSize > 0) {
-        delete[] result->pstCacheList;
-    }
-    free(result);
+    FreeResult(result);
 
     return AX_SKEL_SUCC;
 }
@@ -493,7 +433,8 @@ AX_VOID skel::ppl::PipelineHVCFP::FilterTrackResult(tracker::TrackResultType& tr
     for (auto outer_it = trackResult.begin(); outer_it != trackResult.end(); outer_it++) {
         auto& output_tracks = outer_it->second;
         for (auto it = output_tracks.begin(); it != output_tracks.end(); ) {
-            string strLabel = HVCFP_CLASS_NAMES[it->class_id];
+            AX_U32 class_id = (*it)->class_id;
+            string strLabel = HVCFP_CLASS_NAMES[class_id];
             if (strLabel == "body") {
                 nBodyCount++;
                 if (m_result_constrain.stMaxTargetCount.nBodyTargetCount > 0 &&
@@ -526,3 +467,83 @@ AX_VOID skel::ppl::PipelineHVCFP::FilterTrackResult(tracker::TrackResultType& tr
     }
 }
 
+AX_VOID skel::ppl::PipelineHVCFP::ConvertTrackResult(AX_SKEL_FRAME_T* pstFrame, const tracker::TrackResultType& trackResult, AX_SKEL_RESULT_T **ppstResult) {
+    *ppstResult = (AX_SKEL_RESULT_T*)malloc(sizeof(AX_SKEL_RESULT_T));
+    AX_SKEL_RESULT_T* dst = *ppstResult;
+    memset(dst, 0, sizeof(AX_SKEL_RESULT_T));
+
+    dst->nOriginalHeight = m_originSize[0];
+    dst->nOriginalWidth = m_originSize[1];
+    dst->nFrameId = pstFrame->nFrameId;
+    dst->nStreamId = pstFrame->nStreamId;
+    dst->pUserData = pstFrame->pUserData;
+
+    vector<AX_SKEL_OBJECT_ITEM_T> vecResult;
+    for (auto it = trackResult.begin(); it != trackResult.end(); it++) {
+        const auto& output_tracks = it->second;
+        for (AX_U32 i = 0; i < output_tracks.size(); ++ i) {
+            const auto& obj = output_tracks[i];
+            AX_U32 nClassId = obj->class_id;
+            const AX_CHAR *pstrObjectCategory = HVCFP_CLASS_NAMES[nClassId].c_str();
+            AX_SKEL_OBJECT_ITEM_T stObjectItem;
+            memset(&stObjectItem, 0x00, sizeof(stObjectItem));
+
+            if (obj->state == TrackState::New) {
+                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_NEW;
+            }
+            else if (obj->state == TrackState::Tracked) {
+                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_UPDATE;
+            }
+            else if (obj->state == TrackState::Removed) {
+                stObjectItem.eTrackState = AX_SKEL_TRACK_STATUS_DIE;
+            }
+            else {
+                continue;
+            }
+
+            stObjectItem.pstrObjectCategory = (const AX_CHAR *)pstrObjectCategory;
+            stObjectItem.stRect.fX = (float)obj->_tlwh[0];
+            stObjectItem.stRect.fY = (float)obj->_tlwh[1];
+            stObjectItem.stRect.fW = (float)obj->_tlwh[2];
+            stObjectItem.stRect.fH = (float)obj->_tlwh[3];
+            stObjectItem.fConfidence = (float)obj->score;
+            stObjectItem.nFrameId = obj->real_frame_id;
+
+            // track
+            stObjectItem.nTrackId = obj->track_id;
+
+            if (!m_config.push_disable) {
+                m_tracker_dealer->Update(pstFrame, stObjectItem);
+            }
+
+            vecResult.push_back(stObjectItem);
+        }
+    }
+
+    if (!vecResult.empty()) {
+        dst->nObjectSize = (int)vecResult.size();
+        dst->pstObjectItems = (AX_SKEL_OBJECT_ITEM_T*)malloc(dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
+        memcpy(dst->pstObjectItems, vecResult.data(), dst->nObjectSize * sizeof(AX_SKEL_OBJECT_ITEM_T));
+    }
+
+    if (!m_config.push_disable) {
+        m_tracker_dealer->Finalize(pstFrame, dst, vecResult);
+    }
+}
+
+AX_VOID skel::ppl::PipelineHVCFP::FreeResult(AX_SKEL_RESULT_T *pstResult) {
+    if (!pstResult) return;
+
+    if (pstResult->nObjectSize > 0) {
+        for (int i = 0; i < pstResult->nObjectSize; i++) {
+            if (pstResult->pstObjectItems[i].pstPointSet) {
+                delete[] pstResult->pstObjectItems[i].pstPointSet;
+            }
+        }
+        free(pstResult->pstObjectItems);
+    }
+    if (pstResult->nCacheListSize > 0) {
+        delete[] pstResult->pstCacheList;
+    }
+    free(pstResult);
+}

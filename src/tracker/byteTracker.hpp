@@ -48,7 +48,7 @@ namespace skel {
             }
         };
 
-        typedef track_map<AX_U32, std::vector<CTrack>>  TrackResultType;
+        typedef track_map<AX_U32, std::vector<CTrack*>>  TrackResultType;
 
         class CBYTETracker {
         public:

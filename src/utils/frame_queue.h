@@ -25,7 +25,7 @@ namespace skel {
                     AX_SKEL_FRAME_T* frame = m_queue.front();
                     m_queue.pop();
                     if (frame) {
-                        FreeFrame(frame->stFrame);
+//                        FreeFrame(frame->stFrame);
                         free(frame);
                     }
                 }

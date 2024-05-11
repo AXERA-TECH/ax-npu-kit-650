@@ -52,6 +52,11 @@ namespace skel {
                 return m_queue.size();
             }
 
+            inline void Close() {
+                std::lock_guard<std::mutex> lock(m_lock);
+                m_new_item.notify_all();
+            }
+
             AX_S32 Push(T& item, int timeout = -1) {
                 std::unique_lock<std::mutex> lock(m_lock);
 
@@ -84,50 +89,29 @@ namespace skel {
                         if (!m_new_item.wait_for(lock, std::chrono::milliseconds(timeout), [this](){ return !m_queue.empty() || !m_hasClosed; }))
                             return AX_ERR_SKEL_TIMEOUT;
                     } else {
-                        while (IsEmpty() && !m_hasClosed)
+                        if (IsEmpty()) {
+                            std::unique_lock<std::mutex> lock(m_lock);
                             m_new_item.wait(lock);
+                        }
+
                     }
                 }
 
-                if (!IsEmpty()) {
-                    item = m_queue.front();
-                    m_queue.pop();
-                    lock.unlock();
-
-                    m_remove_item.notify_one();
-
-                    return AX_SKEL_SUCC;
+                std::unique_lock<std::mutex> lock(m_lock);
+                if (m_queue.empty()) {
+                    return AX_ERR_SKEL_UNEXIST;
                 }
-                else {
-                    return AX_ERR_SKEL_QUEUE_EMPTY;
-                }
-            }
 
-            inline bool IsFull() {
-//                std::lock_guard<std::mutex> lock(m_lock);
-                if (m_max_len <= 0) {
-                    return false;
-                } else {
-                    return m_queue.size() >= m_max_len;
-                }
-            }
-
-            inline bool IsEmpty() {
-//                std::lock_guard<std::mutex> lock(m_lock);
-                return m_queue.empty();
-            }
-
-            inline bool IsClosed() {
-                return m_hasClosed;
+                item = m_queue.front();
+                m_queue.pop();
+                return AX_SKEL_SUCC;
             }
 
         protected:
             int m_max_len;
             std::queue<T> m_queue;
-            mutable std::mutex m_lock;
+            std::mutex m_lock;
             std::condition_variable m_new_item;
-            std::condition_variable m_remove_item;
-            bool m_hasClosed;
         };
     }
 }

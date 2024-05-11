@@ -15,6 +15,7 @@
 using namespace std;
 using namespace skel::tracker;
 using namespace skel::detection;
+using namespace skel::infer;
 
 bool CBYTETracker::Init(const BYTETrackerConfig& config) {
     m_N_CLASSES = config.n_classes;
@@ -31,10 +32,10 @@ bool CBYTETracker::Init(const BYTETrackerConfig& config) {
     return true;
 }
 
-track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, const vector<Object>& objects) {
+track_map<AX_U32, vector<CTrack*>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, const vector<Object>& objects) {
     if (!m_hasInited) {
         ALOGE("CBYTETracker has not inited!\n");
-        return track_map<AX_U32, vector<CTrack>>{};
+        return track_map<AX_U32, vector<CTrack*>>{};
     }
 
     AX_U32 nStreamId = frame->nStreamId;
@@ -60,7 +61,7 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
     track_map<AX_U32, vector<CTrack>> refind_tracks_dict;
     track_map<AX_U32, vector<CTrack>> lost_tracks_dict;
     track_map<AX_U32, vector<CTrack>> removed_tracks_dict;
-    track_map<AX_U32, vector<CTrack>> output_tracks_dict;
+    track_map<AX_U32, vector<CTrack *>> output_tracks_dict;
 
     ////////////////// Step 1: Get detections //////////////////
     track_map<AX_U32, vector<vector<float>>> bboxes_dict;
@@ -69,16 +70,17 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
     if (objects.size() > 0) {
         for (AX_U32 i = 0; i < objects.size(); ++i) {
             const Object& obj = objects[i];
+            const float& score = obj.prob;  // confidence
+            const AX_U32& cls_id = obj.label;  // class ID
 
             vector<float> x1y1x2y2;
             x1y1x2y2.resize(4);
-            x1y1x2y2[0] = obj.rect.x;                    // x1
-            x1y1x2y2[1] = obj.rect.y;                    // y1
-            x1y1x2y2[2] = obj.rect.x + obj.rect.width;   // x2
-            x1y1x2y2[3] = obj.rect.y + obj.rect.height;  // y2
 
-            const float& score = obj.prob;  // confidence
-            const AX_U32& cls_id = obj.label;  // class ID
+            Rect_<float> rect = obj.rect;
+            x1y1x2y2[0] = rect.x;                // x1
+            x1y1x2y2[1] = rect.y;                // y1
+            x1y1x2y2[2] = rect.x + rect.width;   // x2
+            x1y1x2y2[3] = rect.y + rect.height;  // y2
 
             bboxes_dict[cls_id].push_back(x1y1x2y2);
             scores_dict[cls_id].push_back(score);
@@ -101,6 +103,9 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
         auto &cls_lost_tracks_inner = lost_tracks_dict[cls_id];
         auto &cls_removed_tracks_inner = removed_tracks_dict[cls_id];
         auto &cls_output_tracks_inner = output_tracks_dict[cls_id];
+
+        // clear removed tracks
+        cls_removed_tracks_global.clear();
 
         // class bboxes
         vector<vector<float>>& cls_bboxes = bboxes_dict[cls_id];
@@ -159,8 +164,9 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
             CTrack* track = cls_track_pool_inner[matches[i][0]];
             CTrack* det = &cls_dets[matches[i][1]];
             // FIXME.
-            if (track->state == TrackState::New
-                || track->state == TrackState::Tracked) {
+            //if (track->state == TrackState::New
+            //    || track->state == TrackState::Tracked) {
+            if (track->state == TrackState::Tracked) {
                 track->update(*det, this->m_frame_id, nFrameId);
                 cls_activated_tracks_inner.push_back(*track);
             } else {
@@ -179,8 +185,9 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
         // unnatched tacks in track pool to cls_r_tracked_tracks
         for (AX_U32 i = 0; i < u_track.size(); ++i) {
             // FIXME.
-            if (cls_track_pool_inner[u_track[i]]->state == TrackState::New
-                || cls_track_pool_inner[u_track[i]]->state == TrackState::Tracked) {
+            //if (cls_track_pool_inner[u_track[i]]->state == TrackState::New
+            //    || cls_track_pool_inner[u_track[i]]->state == TrackState::Tracked) {
+            if (cls_track_pool_inner[u_track[i]]->state == TrackState::Tracked) {
                 cls_unmatched_tracks.push_back(cls_track_pool_inner[u_track[i]]);
             }
         }
@@ -197,8 +204,9 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
             CTrack* track = cls_unmatched_tracks[matches[i][0]];
             CTrack* det = &cls_dets[matches[i][1]];
             // FIXME.
-            if (track->state == TrackState::New
-                || track->state == TrackState::Tracked) {
+            //if (track->state == TrackState::New
+            //    || track->state == TrackState::Tracked) {
+            if (track->state == TrackState::Tracked) {
                 track->update(*det, this->m_frame_id, nFrameId);
                 cls_activated_tracks_inner.push_back(*track);
             } else {
@@ -266,8 +274,9 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
         // ----- post processing of m_tracked_tracks
         for (AX_U32 i = 0; i < cls_tracked_tracks_global.size(); ++i) {
             // FIXME.
-            if (cls_tracked_tracks_global[i].state == TrackState::New
-                || cls_tracked_tracks_global[i].state == TrackState::Tracked) {
+            //if (cls_tracked_tracks_global[i].state == TrackState::New
+            //    || cls_tracked_tracks_global[i].state == TrackState::Tracked) {
+            if (cls_tracked_tracks_global[i].state == TrackState::Tracked) {
                 cls_tracked_tracks_swap.push_back(cls_tracked_tracks_global[i]);
             }
         }
@@ -301,19 +310,19 @@ track_map<AX_U32, vector<CTrack>> CBYTETracker::Update(AX_SKEL_FRAME_T* frame, c
 
         // return output
         for (AX_U32 i = 0; i < cls_tracked_tracks_global.size(); ++i) {
+            // FIXME.
+            //if (true/*cls_tracked_tracks_global[i].is_activated*/) {
             if (cls_tracked_tracks_global[i].is_activated) {
-                cls_output_tracks_inner.push_back(cls_tracked_tracks_global[i]);
+                cls_output_tracks_inner.push_back(&cls_tracked_tracks_global[i]);
             }
         }
 
         // FIXME.
         for (AX_U32 i = 0; i < cls_removed_tracks_global.size(); ++i) {
-            if (cls_removed_tracks_global[i].is_activated) {
-                cls_output_tracks_inner.push_back(cls_removed_tracks_global[i]);
+            if (true/*cls_removed_tracks_global[i].is_activated*/) {
+                cls_output_tracks_inner.push_back(&cls_removed_tracks_global[i]);
             }
         }
-
-        cls_removed_tracks_global.clear();
     }  // End of class itereations
 
     return output_tracks_dict;

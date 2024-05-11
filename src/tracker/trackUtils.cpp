@@ -320,6 +320,7 @@ double CBYTETracker::lapjv(const vector<vector<float>>& cost, vector<AX_S32>& ro
         // cout << "Calculate Wrong!" << endl;
         //system("pause");
         //exit(0);
+        printf("Calculate Wrong!\n");
         goto EXIT;
     }
 

@@ -74,6 +74,8 @@ namespace skel {
             AX_S32 GetTrackResult(AX_SKEL_RESULT_T **ppstResult, AX_S32 nTimeout);
             AX_VOID FilterDetResult(std::vector<skel::detection::Object>& detResult);
             AX_VOID FilterTrackResult(tracker::TrackResultType& trackResult);
+            AX_VOID ConvertTrackResult(AX_SKEL_FRAME_T* pstFrame, const tracker::TrackResultType& trackResult, AX_SKEL_RESULT_T **ppstResult);
+            AX_VOID FreeResult(AX_SKEL_RESULT_T *pstResult);
 
         private:
             HVCPConfig m_config;

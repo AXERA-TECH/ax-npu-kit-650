@@ -13,8 +13,8 @@ export PATH=$PATH:$PWD/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin/
 
 ### 2. 下载源码
 ```shell
-git clone https://github.com/AXERA-TECH/ax-skel-650.git
-cd ax-skel-650
+git clone https://github.com/AXERA-TECH/ax-npu-kit-650.git
+cd ax-npu-kit-650
 ```
 
 ### 3. 编译

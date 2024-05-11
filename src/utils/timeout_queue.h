@@ -26,8 +26,7 @@ namespace skel {
         class TimeoutQueue {
         public:
             explicit TimeoutQueue(int max_len = -1):
-                    m_max_len(max_len),
-                    m_hasClosed(false) {
+                    m_max_len(max_len) {
 
             }
             ~TimeoutQueue() = default;
@@ -36,15 +35,22 @@ namespace skel {
             TimeoutQueue(const TimeoutQueue&) = delete;
             TimeoutQueue& operator = (const TimeoutQueue&) = delete;
 
-            inline void SetCapacity(int max_len) {
+            inline bool IsFull() {
                 std::lock_guard<std::mutex> lock(m_lock);
-                m_max_len = max_len;
+                if (m_max_len <= 0) {
+                    return false;
+                } else {
+                    return m_queue.size() >= m_max_len;
+                }
             }
 
-            inline void Close() {
+            inline bool IsEmpty() {
                 std::lock_guard<std::mutex> lock(m_lock);
-                m_hasClosed = true;
-                m_new_item.notify_all();
+                return m_queue.empty();
+            }
+
+            inline void SetCapacity(int max_len) {
+                m_max_len = max_len;
             }
 
             inline size_t Size() {
@@ -58,20 +64,32 @@ namespace skel {
             }
 
             AX_S32 Push(T& item, int timeout = -1) {
-                std::unique_lock<std::mutex> lock(m_lock);
-
                 if (timeout == 0) {
                     if (IsFull())   return AX_ERR_SKEL_QUEUE_FULL;
                 } else {
                     if (timeout > 0) {
-                        if (!m_remove_item.wait_for(lock, std::chrono::milliseconds(timeout), [this](){ return !(m_queue.size() >= m_max_len);}))
-                            return AX_ERR_SKEL_TIMEOUT;
+                        auto start = std::chrono::steady_clock::now();
+                        auto end = start;
+                        int elapsed = 0;
+
+                        while (IsFull()) {
+                            // 100us
+                            std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+                            end = std::chrono::steady_clock::now();
+                            elapsed = (int)(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+
+                            if (elapsed > timeout) {
+                                return AX_ERR_SKEL_TIMEOUT;
+                            }
+                        }
                     } else {    // block
                         while (IsFull())
-                            m_remove_item.wait(lock);
+                            std::this_thread::sleep_for(std::chrono::microseconds(100));
                     }
                 }
 
+                std::unique_lock<std::mutex> lock(m_lock);
                 m_queue.push(item);
                 lock.unlock();
                 m_new_item.notify_one();
@@ -80,14 +98,25 @@ namespace skel {
             }
 
             AX_S32 Pop(T& item, int timeout = -1) {
-                std::unique_lock<std::mutex> lock(m_lock);
-
                 if (timeout == 0) {
                     if (IsEmpty())  return AX_ERR_SKEL_QUEUE_EMPTY;
                 } else {
                     if (timeout > 0) {
-                        if (!m_new_item.wait_for(lock, std::chrono::milliseconds(timeout), [this](){ return !m_queue.empty() || !m_hasClosed; }))
-                            return AX_ERR_SKEL_TIMEOUT;
+                        auto start = std::chrono::steady_clock::now();
+                        auto end = start;
+                        int elapsed = 0;
+
+                        while (IsEmpty()) {
+                            // 100us
+                            std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+                            end = std::chrono::steady_clock::now();
+                            elapsed = (int)(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+
+                            if (elapsed > timeout) {
+                                return AX_ERR_SKEL_TIMEOUT;
+                            }
+                        }
                     } else {
                         if (IsEmpty()) {
                             std::unique_lock<std::mutex> lock(m_lock);
@@ -99,7 +128,7 @@ namespace skel {
 
                 std::unique_lock<std::mutex> lock(m_lock);
                 if (m_queue.empty()) {
-                    return AX_ERR_SKEL_UNEXIST;
+                    return AX_ERR_SKEL_QUEUE_EMPTY;
                 }
 
                 item = m_queue.front();

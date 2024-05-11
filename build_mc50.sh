@@ -1,13 +1,9 @@
 #!/bin/bash
-if [ ! -d ax650n_bsp_sdk ]; then
-  chmod +x ./download_ax_bsp.sh
-  ./download_ax_bsp.sh
-fi
+chmod +x ./download_ax_bsp.sh
+./download_ax_bsp.sh
 
-if [ ! -d third-party ]; then
-  chmod +x ./download_third_party.sh
-  ./download_third_party.sh
-fi
+chmod +x ./download_third_party.sh
+./download_third_party.sh
 
 mkdir -p build && cd build
 cmake ..  \
